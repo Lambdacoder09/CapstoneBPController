@@ -16,7 +16,7 @@ SV = 70/1000                      # litres per heart beat
 beat_period = 1.0/HR              # seconds per heart beat including diastole
 sys_frac = 0.2                    # fraction of time heart is beating
 sys_time = beat_period * sys_frac # seconds of time heart is beating
-shape, scale = 2.5, sys_time/10   # gamma variable parameters for systole
+shape, scale = 3, sys_time/3   # gamma variable parameters for systole
 tau_d = 0.15 * beat_period        # diastolic decay time constant
 Qmean = SV / beat_period          # avg blow flow through cycle - tied to stroke volume
 
@@ -36,3 +36,12 @@ V1_nic, V2_nic = 20.0, 40.0   # L, central and peripheral volumes
 k10_nic = 0.15                # elimination rate from central (1/s)
 k12_nic = 0.04                # rate central -> peripheral (1/s)               
 k21_nic = 0.02                # rate peripheral -> central (1/s)
+
+# PD Parameters - Phenylephrine
+Emax_R_phe  = 0
+Emax_C_phe  = 0
+Emax_Z_phe  = 0
+# PD Parameters - Nicardipine
+Emax_R_ni   = 0
+Emax_C_ni   = 0
+Emax_Z_ni   = 0

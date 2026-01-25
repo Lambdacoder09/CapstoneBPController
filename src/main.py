@@ -5,14 +5,14 @@ from pump import Qin
 from pk import C1_phe, C1_nic
 from windkessel import Pin
 
-beats_to_show = 10
+beats_to_show = 3
 tmax = beats_to_show * beat_period
 mask = t <= tmax
 
 plt.figure(figsize=(8,4))
 plt.plot(t[mask], Qin[mask], label="Gamma-variate inflow")
 plt.xlabel("Time (s)")
-plt.ylabel("Flow (mL/s)")
+plt.ylabel("Flow (L/s)")
 plt.title("Cardiac inflow waveform")
 plt.legend()
 plt.grid(True)

@@ -1,26 +1,18 @@
 from config import *
 import numpy as np
 
-# Blood flow shape functions
+# Blood flow shape function (systolic only)
 def Qsys(shape, scale, t):
-    return (t**(shape-1)) * np.exp(-t/scale) # gamma
-def Qdia(Qend, tau_d, sys_time, t):
-    return Qend * np.exp(-(t - sys_time)/tau_d) # exp decay
+    return (t**(shape-1)) * np.exp(-t/scale)  # gamma-like profile
 
-# --- Compute combined area of unscaled shape profiles ---
+# --- Compute area of unscaled systolic profile ---
 tb_sys = np.arange(0.0, sys_time, dt)
-tb_dia = np.arange(sys_time, beat_period, dt)
-
 kernel_sys = Qsys(shape, scale, tb_sys)
-Qend_unscaled = Qsys(shape, scale, sys_time)
-kernel_dia = Qdia(Qend_unscaled, tau_d, sys_time, tb_dia)
 
 area_sys = np.trapezoid(kernel_sys, tb_sys)
-area_dia = np.trapezoid(kernel_dia, tb_dia)
-area_total = area_sys + area_dia
 
 # Scale factor so that inflow per beat = SV
-Qscale = SV / area_total
+Qscale = SV / area_sys
 
 # --- Generate full Qin over N samples ---
 Qin = np.zeros(N)
@@ -29,4 +21,4 @@ for k in range(N):
     if tb < sys_time:
         Qin[k] = Qscale * Qsys(shape, scale, tb)
     else:
-        Qin[k] = Qscale * Qdia(Qend_unscaled, tau_d, sys_time, tb)
+        Qin[k] = 0.0   # no diastolic decay, flat zero

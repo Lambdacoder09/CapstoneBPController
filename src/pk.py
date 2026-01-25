@@ -11,7 +11,7 @@ C2_phe = np.zeros(N)
 C1_nic = np.zeros(N)
 C2_nic = np.zeros(N)
 
-# PDE Update Loop
+# 2 Compartment PK update loop
 for k in range(N-1):
     # Phenylephrine
     dC1_phe = (u_phe[k]/V1_phe) \
