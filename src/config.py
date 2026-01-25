@@ -21,9 +21,9 @@ tau_d = 0.15 * beat_period        # diastolic decay time constant
 Qmean = SV / beat_period          # avg blow flow through cycle - tied to stroke volume
 
 # Cardiovascular (Windkessel) Parameters
-R  = 1e3  # Peripheral resistance, mmHg·s/L
-C  = 1e-3  # Arterial compliance, L/mmHg
-Za = 5        # Aortal characteristic imperance, mmHg·s/L
+R0 = 1e3  # Peripheral resistance, mmHg·s/L
+C0 = 1e-3  # Arterial compliance, L/mmHg
+Z0 = 5        # Aortal characteristic imperance, mmHg·s/L
 Pv = 5        # Background venous pressure, mmHg
 
 # PK Parameters - Phenylephrine
@@ -38,10 +38,16 @@ k12_nic = 0.04                # rate central -> peripheral (1/s)
 k21_nic = 0.02                # rate peripheral -> central (1/s)
 
 # PD Parameters - Phenylephrine
-Emax_R_phe  = 0
-Emax_C_phe  = 0
-Emax_Z_phe  = 0
+Emax_Rphe = 0
+EC50_Rphe = 0
+Emax_Rphe = 0
+EC50_Rphe = 0
+Emax_Zphe = 0
+EC50_Zphe = 0
 # PD Parameters - Nicardipine
-Emax_R_ni   = 0
-Emax_C_ni   = 0
-Emax_Z_ni   = 0
+Emax_Rnic = 0
+EC50_Rnic = 0
+Emax_Rnic = 0
+EC50_Rnic = 0
+Emax_Znic = 0
+EC50_Znic = 0

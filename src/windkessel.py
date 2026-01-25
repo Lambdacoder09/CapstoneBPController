@@ -1,5 +1,6 @@
 from config import *
 from pump import Qin
+from pd import R, C, Za
 import numpy as np
 
 # Major cardiac variable estimates
