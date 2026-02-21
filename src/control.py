@@ -9,8 +9,7 @@ from state_space import A, B, C, D
 
 
 # x[k+1] = A x[k] + B u[k]
-# y[k]   = C x[k] + D u[k] crt / to # 
-
+# y[k]   = C x[k] + D u[k] 
 
 
 # Creating a new state vector 
@@ -21,15 +20,14 @@ state_vector = np.column_stack ((
 ))
                                 
 # create a step state vector, Xk+1, updated state after one time step
-step_state_vector = np.coloumn_stack((
+target_state_vector = np.coloumn_stack(
     
-    np.zeros_likeC1_phe), 
+    np.zeros_like(C1_phe), 
     np.zeros_like(C1_nic),
     np.ones_like(MAP_est) * target_map #we want the arterial pressure to reach target 
-
 )
 
-error_state = state_vector - step_state_vector
+error_state = state_vector - target_state_vector
 
 #Q matrix or penalizes state error
 Q = np.diag([
@@ -44,22 +42,18 @@ R_lqr = np.diag([
     0.1    # nic infusion penalty
 ])
 
-
-# optimal control R
-
-u = -K @ error_state.T
-
 # Solve riccati equation 
 P = solve_discrete_are(A, B, Q, R_lqr)
 #then computing the gain matrix 
 K = np.linalg.inv(B.T @ P @ B + R_lqr) @ (B.T @ P @ A)
 
-# Quadratic cost: squared deviation from target MAP
-cost_function = (MAP_est[-1] - target_map)**2
+
+# optimal control R
+u = -K @ error_state.T
 
 # Controller 
 
 u_history = np.array([
-    -K @ (state_vector[k] - step_state_vector[k])
+    -K @ (state_vector[k] - target_state_vector[k])
     for k in range(len(state_vector))
 ])
