@@ -5,6 +5,7 @@ from signal_process import Pin, MAP_est, Z_est, R_est, C_est
 from pd import R, C, Z
 from scipy.linalg import solve_discrete_are
 from pk import C1_phe, C1_nic
+from state_space import A, B, C, D
 
 
 # x[k+1] = A x[k] + B u[k]
