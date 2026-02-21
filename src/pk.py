@@ -2,9 +2,6 @@ from config import *
 from control import u_phe, u_nic
 import numpy as np
 
-u_phe = np.ones(N) * 0.01
-u_nic = np.ones(N) * 0.01 
-
 # State arrays: central and peripheral concentrations
 C1_phe = np.zeros(N)
 C2_phe = np.zeros(N)
@@ -35,4 +32,3 @@ for k in range(N-1):
     C1_nic[k+1] = C1_nic[k] + dt*dC1_nic[k]
     C2_nic[k+1] = C2_nic[k] + dt*dC2_nic[k]
 
-    
