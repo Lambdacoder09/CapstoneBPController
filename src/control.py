@@ -48,12 +48,12 @@ P = solve_discrete_are(A, B, Q, R_lqr)
 K = np.linalg.inv(B.T @ P @ B + R_lqr) @ (B.T @ P @ A)
 
 
-# optimal control R
-u = -K @ error_state.T
+# Drug infusion u for controller 
 
-# Controller 
-
-u_history = np.array([
+u = np.array([
     -K @ (state_vector[k] - target_state_vector[k])
     for k in range(len(state_vector))
 ])
+
+u_phe = u[:, 0]
+u_nic = u[:, 1]
