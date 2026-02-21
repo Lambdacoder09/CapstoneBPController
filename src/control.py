@@ -1,59 +1,69 @@
 import numpy as np
-from config import *
-from pump import HR, Qin
-from signal_process import Pin, MAP_est, Z_est, R_est, C_est
-from pd import R, C, Z
 from scipy.linalg import solve_discrete_are
-from pk import C1_phe, C1_nic
-from state_space import A, B, C, D
+from config import *
+from state_space import A, B
 
 
-# x[k+1] = A x[k] + B u[k]
-# y[k]   = C x[k] + D u[k] 
+# Cost function matrices
 
-
-# Creating a new state vector 
-state_vector = np.column_stack ((
-        C1_phe,
-        C1_nic,
-        MAP_est
-))
-                                
-# create a step state vector, Xk+1, updated state after one time step
-target_state_vector = np.coloumn_stack(
-    
-    np.zeros_like(C1_phe), 
-    np.zeros_like(C1_nic),
-    np.ones_like(MAP_est) * target_map #we want the arterial pressure to reach target 
-)
-
-error_state = state_vector - target_state_vector
-
-#Q matrix or penalizes state error
 Q = np.diag([
-    1.0,     # C1_phe weight (small)
-    1.0,     # C1_nic weight (small)
-    100.0    # MAP weight (large — we care most)
+    1.0,
+    1.0,
+    100.0
 ])
 
-# R matrix, it penalizes aggresive drug infusion 
 R_lqr = np.diag([
-    0.1,   # phe infusion penalty
-    0.1    # nic infusion penalty
+    0.1,
+    0.1
 ])
 
-# Solve riccati equation 
-P = solve_discrete_are(A, B, Q, R_lqr)
-#then computing the gain matrix 
-K = np.linalg.inv(B.T @ P @ B + R_lqr) @ (B.T @ P @ A)
+# Riccati
+P_lqr = solve_discrete_are(A, B, Q, R_lqr)
+K = np.linalg.inv(B.T @ P_lqr @ B + R_lqr) @ (B.T @ P_lqr @ A)
 
 
-# Drug infusion u for controller 
+# =====================================
+# Beat-Synchronous Controller Function
+# =====================================
 
-u = np.array([
-    -K @ (state_vector[k] - target_state_vector[k])
-    for k in range(len(state_vector))
-])
+def run_controller(C1_phe, C1_nic, MAP_beats, beat_indices):
+    """
+    Beat-synchronous LQR controller.
 
-u_phe = u[:, 0]
-u_nic = u[:, 1]
+    Inputs:
+        C1_phe       : array of central phe concentrations
+        C1_nic       : array of central nic concentrations
+        MAP_beats    : beat-by-beat MAP values
+        beat_indices : trough indices defining beat boundaries
+
+    Returns:
+        u_phe, u_nic : infusion arrays (length N)
+    """
+
+    u_phe = np.zeros(N)
+    u_nic = np.zeros(N)
+
+    for i in range(len(beat_indices) - 1):
+
+        start = beat_indices[i]
+        end   = beat_indices[i+1]
+
+        x_k = np.array([
+            C1_phe[start],
+            C1_nic[start],
+            MAP_beats[i]
+        ])
+
+        x_ref = np.array([
+            0.0,
+            0.0,
+            target_map
+        ])
+
+        u_k = -K @ (x_k - x_ref)
+
+        # Hold infusion constant for this beat
+        u_phe[start:end] = u_k[0]
+        u_nic[start:end] = u_k[1]
+
+    return u_phe, u_nic
