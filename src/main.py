@@ -12,7 +12,7 @@ from signal_process import BPProcessor
 
 
 # =====================================
-# 1️⃣ Linear Model + LQR Gain
+# Linear Model + LQR Gain
 # =====================================
 
 A, B = compute_state_space()
@@ -20,7 +20,7 @@ K = compute_lqr_gain(A, B, Q, R_lqr)
 
 
 # =====================================
-# 2️⃣ Allocate State Arrays
+# Allocate State Arrays
 # =====================================
 
 C1_phe = np.zeros(N)
@@ -42,7 +42,7 @@ P[0] = initialize_windkessel()
 
 
 # =====================================
-# 3️⃣ Run Simulation
+# Run Simulation
 # =====================================
 
 for k in range(N - 1):
@@ -68,7 +68,7 @@ print("Simulation complete.")
 
 
 # =====================================
-# 4️⃣ Beat Detection
+# Beat Detection
 # =====================================
 
 fs = int(1/dt)
@@ -77,12 +77,7 @@ bp = BPProcessor(fs, HR)
 # Direct detection on raw pressure
 peaks, troughs = bp.detect_beats(P)
 
-print("Number of peaks:", len(peaks))
-print("Number of troughs:", len(troughs))
-print("dt:", dt)
-print("T:", T)
-print("N:", N)
-print("t[-1]:", t[-1])
+
 
 if len(troughs) >= 2:
     MAP_beats = bp.estimate_map(P)
@@ -92,31 +87,36 @@ else:
     beat_indices = np.array([])
 
 # =====================================
-# 5️⃣ Plot Estimated MAP Only
+# Plot Estimated MAP Only
 # =====================================
 
 # plt.figure(figsize=(10, 5))
 
-# if len(MAP_beats) > 0:
+if len(MAP_beats) > 0:
 
-#     beat_times = t[beat_indices]
+    beat_times = t[beat_indices]
 
-#     plt.plot(beat_times, MAP_beats, 'o-', label="Estimated MAP")
-#     plt.axhline(target_map, linestyle='--', color='black', label="Target MAP")
+    plt.plot(beat_times, MAP_beats, 'o-', label="Estimated MAP")
+    plt.axhline(target_map, linestyle='--', color='black', label="Target MAP")
 
-#     plt.xlabel("Time (s)")
-#     plt.ylabel("Mean Arterial Pressure (mmHg)")
-#     plt.title("Beat-Averaged MAP (No Filtering)")
-#     plt.legend()
-#     plt.grid(True)
+    plt.xlabel("Time (s)")
+    plt.ylabel("Mean Arterial Pressure (mmHg)")
+    plt.title("Beat-Averaged MAP")
+    plt.legend()
+    plt.grid(True)
 
-# else:
-#     print("No MAP beats detected.")
+else:
+    print("No MAP beats detected.")
 
+plt.show()
+
+
+
+# plt.figure(figsize=(10,5))
+# plt.plot(t[:1000], P[:1000])
 # plt.show()
 
-
-
-plt.figure(figsize=(10,5))
-plt.plot(t[:1000], P[:1000])
-plt.show()
+# Send to database: 
+# P(pressure)
+# MAP_beats, beat_times (beat averaged MAP and beat time indices) 
+# C1_phe, C1_nic (drug concentrations)
