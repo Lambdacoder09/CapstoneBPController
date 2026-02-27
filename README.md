@@ -21,7 +21,7 @@ There are a few puzzle pieces to this control system:
 | Input                  | Blood flow waveform                           |
 | Output                 | Blood pressure waveform                       |
 | Live State Estimation  | Signal processing & analysis (blood pressure & flow) |
-| Actuators              | Cardiac drugs                                 |
+| Actuators              | Cardiac drugs (simulated)                     |
 
 The system as a whole has more parts (sensors, database, data relay etc.), these are handled in other repository.
 
@@ -33,7 +33,7 @@ The system as a whole has more parts (sensors, database, data relay etc.), these
 | `pump.py`          | Generates input blood flow                                                                                              |
 | `windkessel.py`    | Calculates BP waveform based on blood flow and a three‑element Windkessel (Z, R, C)                                     |
 | `signal_process.py`| Cleans BP waveform and estimates MAP                                                                                    |
-| `control.py`       | Controller – changes drug infusion every heart beat based on MAP and main compartment drug concentrations               |
+| `control.py`       | Controller – changes simulated drug infusion every heart beat based on MAP and main compartment drug concentrations               |
 | `pk.py`            | Pharmacokinetic model – calculates drug concentration in plasma over time with a two‑compartment model based on infusion|
 | `pd.py`            | Pharmacodynamic model – calculates the effect of drug concentration levels on Windkessel parameters                     |
 | `main.py`          | Gathers, prints/plots, and sends results to database and dashboard (outside of this repository)                         |                                                       
