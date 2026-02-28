@@ -102,3 +102,50 @@ class BPProcessor:
 
         self.MAP = np.array(MAP)
         return self.MAP
+
+
+    # -------------------------
+    # Per-Beat Hemodynamics
+    # -------------------------
+    def extract_hemodynamics(self, signal):
+        """
+        Extract per-beat hemodynamic parameters from the RAW pressure signal.
+        Must be called after detect_beats().
+
+        For each beat (trough-to-trough interval):
+            SBP  : systolic blood pressure  (peak within beat)
+            DBP  : diastolic blood pressure (trough at beat start)
+            PP   : pulse pressure           (SBP - DBP)
+            MAP  : mean arterial pressure   (time-averaged over beat)
+
+        Returns dict with arrays of per-beat values.
+        """
+        if self.troughs is None or len(self.troughs) < 2:
+            return {"sbp": [], "dbp": [], "pp": [], "map": []}
+
+        sbp_list = []
+        dbp_list = []
+        pp_list  = []
+        map_list = []
+
+        for i in range(len(self.troughs) - 1):
+            start = self.troughs[i]
+            end   = self.troughs[i + 1]
+            beat  = signal[start:end]
+
+            sbp = float(np.max(beat))
+            dbp = float(beat[0])           # pressure at trough (start of beat)
+            pp  = sbp - dbp
+            m   = float(np.mean(beat))
+
+            sbp_list.append(sbp)
+            dbp_list.append(dbp)
+            pp_list.append(pp)
+            map_list.append(m)
+
+        return {
+            "sbp": sbp_list,
+            "dbp": dbp_list,
+            "pp":  pp_list,
+            "map": map_list,
+        }

@@ -345,8 +345,8 @@
                 <div class="stat-label">Steady-State MAP</div>
             </div>
             <div class="stat">
-                <div class="stat-value orange" id="sBeats">--</div>
-                <div class="stat-label">Heart Beats</div>
+                <div class="stat-value orange" id="sBP">--</div>
+                <div class="stat-label">SBP / DBP</div>
             </div>
             <div class="stat">
                 <div class="stat-value blue" id="sStatus">Ready</div>
@@ -366,14 +366,22 @@
             </div>
 
             <!-- 2. MAP Regulation -->
-            <div class="panel span accent-cyan">
-                <h2><span class="dot cyan"></span>Beat-Averaged MAP Regulation</h2>
-                <div class="chart-wrap tall">
+            <div class="panel accent-cyan">
+                <h2><span class="dot cyan"></span>Beat-Averaged MAP</h2>
+                <div class="chart-wrap">
                     <canvas id="mapChart"></canvas>
                 </div>
             </div>
 
-            <!-- 3. Drug Infusion -->
+            <!-- 3. Hemodynamic Trends (SBP/DBP) -->
+            <div class="panel accent-orange">
+                <h2><span class="dot orange"></span>Hemodynamic Trends (SBP/DBP)</h2>
+                <div class="chart-wrap">
+                    <canvas id="hemoChart"></canvas>
+                </div>
+            </div>
+
+            <!-- 4. Drug Infusion -->
             <div class="panel accent-red">
                 <h2><span class="dot red"></span>Drug Infusion Commands</h2>
                 <div class="chart-wrap">
@@ -381,7 +389,7 @@
                 </div>
             </div>
 
-            <!-- 4. Concentrations -->
+            <!-- 5. Concentrations -->
             <div class="panel accent-blue">
                 <h2><span class="dot blue"></span>Effect-Site Concentrations</h2>
                 <div class="chart-wrap">
@@ -405,46 +413,37 @@
 
         let charts = {};
 
-        async function runSim() {
-            const btn = document.getElementById('runBtn');
-            const text = document.getElementById('btnText');
-            const spin = document.getElementById('spinner');
-            const dash = document.getElementById('dash');
-            const statDiv = document.getElementById('stats');
+        try {
+            const res = await fetch('/simulate');
+            const d = await res.json();
+            if (!res.ok || d.error) throw new Error(d.error || 'Server error');
 
-            btn.disabled = true;
-            text.textContent = 'Computing…';
-            spin.style.display = 'block';
-            dash.classList.remove('visible');
-            statDiv.classList.remove('hidden');
-            document.getElementById('sStatus').textContent = 'Running…';
+            // Stats
+            document.getElementById('sTarget').textContent = d.target_map + ' mmHg';
+            const lastMAPs = d.map_beats.slice(-10);
+            const steadyMAP = (lastMAPs.reduce((a, b) => a + b, 0) / lastMAPs.length).toFixed(1);
+            document.getElementById('sSteady').textContent = steadyMAP + ' mmHg';
 
-            try {
-                const res = await fetch('/simulate');
-                const d = await res.json();
-                if (!res.ok || d.error) throw new Error(d.error || 'Server error');
+            // SBP/DBP Stats
+            const lastSBP = d.hemo_sbp[d.hemo_sbp.length - 1];
+            const lastDBP = d.hemo_dbp[d.hemo_dbp.length - 1];
+            document.getElementById('sBP').textContent = Math.round(lastSBP) + ' / ' + Math.round(lastDBP);
 
-                // Stats
-                document.getElementById('sTarget').textContent = d.target_map + ' mmHg';
-                const lastMAPs = d.map_beats.slice(-10);
-                const steadyMAP = (lastMAPs.reduce((a, b) => a + b, 0) / lastMAPs.length).toFixed(1);
-                document.getElementById('sSteady').textContent = steadyMAP + ' mmHg';
-                document.getElementById('sBeats').textContent = d.beat_times.length;
-                document.getElementById('sStatus').textContent = 'Complete ✓';
-                document.getElementById('sStatus').style.color = '';
+            document.getElementById('sStatus').textContent = 'Complete ✓';
+            document.getElementById('sStatus').style.color = '';
 
-                renderAll(d);
-                dash.classList.add('visible');
+            renderAll(d);
+            dash.classList.add('visible');
 
-            } catch (e) {
-                console.error(e);
-                document.getElementById('sStatus').textContent = 'Error ✗';
-                document.getElementById('sStatus').style.color = 'var(--accent-red)';
-            } finally {
-                btn.disabled = false;
-                text.textContent = 'Re-Run Simulation';
-                spin.style.display = 'none';
-            }
+        } catch (e) {
+            console.error(e);
+            document.getElementById('sStatus').textContent = 'Error ✗';
+            document.getElementById('sStatus').style.color = 'var(--accent-red)';
+        } finally {
+            btn.disabled = false;
+            text.textContent = 'Re-Run Simulation';
+            spin.style.display = 'none';
+        }
         }
 
         function destroyAll() {

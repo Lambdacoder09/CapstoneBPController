@@ -115,6 +115,17 @@ def run_simulation():
                 cur_u_nic = current_u_nic
 
     beat_times = [float(idx * dt) for idx in beat_indices]
+
+    # ── Extract hemodynamic parameters from the aortic waveform ──
+    bp_hemo = BPProcessor(fs, HR)
+    bp_hemo.detect_beats(Pin)
+    hemo = bp_hemo.extract_hemodynamics(Pin)
+    # Beat times for hemodynamic measurements (trough-to-trough midpoints)
+    hemo_beat_times = []
+    if bp_hemo.troughs is not None and len(bp_hemo.troughs) >= 2:
+        for i in range(len(bp_hemo.troughs) - 1):
+            mid = (bp_hemo.troughs[i] + bp_hemo.troughs[i+1]) // 2
+            hemo_beat_times.append(float(mid * dt))
     
     # Downsample for frontend (N can be 100k at 1kHz)
     ds = max(1, N // 2000)  # ~2000 points for time-series charts
@@ -139,6 +150,12 @@ def run_simulation():
         "wave_time": t[wave_start:wave_end:wave_ds].tolist(),
         "wave_pin": Pin[wave_start:wave_end:wave_ds].tolist(),
         "wave_p": P[wave_start:wave_end:wave_ds].tolist(),
+        # Hemodynamic parameters (per-beat)
+        "hemo_times": hemo_beat_times,
+        "hemo_sbp": hemo["sbp"],
+        "hemo_dbp": hemo["dbp"],
+        "hemo_pp":  hemo["pp"],
+        "hemo_map": hemo["map"],
     }
 
 @app.route('/')
