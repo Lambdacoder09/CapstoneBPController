@@ -421,8 +421,8 @@
 
             try {
                 const res = await fetch('/simulate');
-                if (!res.ok) throw new Error('Server error');
                 const d = await res.json();
+                if (!res.ok || d.error) throw new Error(d.error || 'Server error');
 
                 // Stats
                 document.getElementById('sTarget').textContent = d.target_map + ' mmHg';
@@ -431,6 +431,7 @@
                 document.getElementById('sSteady').textContent = steadyMAP + ' mmHg';
                 document.getElementById('sBeats').textContent = d.beat_times.length;
                 document.getElementById('sStatus').textContent = 'Complete ✓';
+                document.getElementById('sStatus').style.color = '';
 
                 renderAll(d);
                 dash.classList.add('visible');
@@ -438,6 +439,7 @@
             } catch (e) {
                 console.error(e);
                 document.getElementById('sStatus').textContent = 'Error ✗';
+                document.getElementById('sStatus').style.color = 'var(--accent-red)';
             } finally {
                 btn.disabled = false;
                 text.textContent = 'Re-Run Simulation';

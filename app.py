@@ -46,6 +46,9 @@ def run_simulation():
     A, B = compute_state_space()
     K = compute_lqr_gain(A, B, Q, R_lqr)
 
+    # Only check for beats every ~half a beat period (much faster than every sample)
+    beat_check_interval = max(1, int(0.5 * beat_period * fs))
+
     for k in range(N - 1):
         u_phe[k] = current_u_phe
         u_nic[k] = current_u_nic
@@ -56,19 +59,21 @@ def run_simulation():
         R_arr[k] = compute_R(C1_phe[k], C1_nic[k])
         P[k+1], Pin[k], Qout[k] = update_windkessel(P[k], R_arr[k], Qin[k])
 
-        peaks, troughs = bp.detect_beats(P[:k+1])
+        # Only run beat detection periodically, not every sample
+        if (k + 1) % beat_check_interval == 0 or k == N - 2:
+            peaks, troughs = bp.detect_beats(P[:k+2])
 
-        if len(troughs) > 0 and troughs[-1] != last_trough:
-            start = last_trough
-            end = troughs[-1]
-            last_trough = end
-            MAP_k = np.mean(P[start:end])
-            MAP_beats.append(MAP_k)
-            beat_indices.append(end)
-            
-            current_u_phe, current_u_nic = beat_synchronous_controller(
-                C1_phe[start], C1_nic[start], MAP_k, K
-            )
+            if len(troughs) > 0 and troughs[-1] != last_trough:
+                start = last_trough
+                end = troughs[-1]
+                last_trough = end
+                MAP_k = np.mean(P[start:end])
+                MAP_beats.append(MAP_k)
+                beat_indices.append(end)
+                
+                current_u_phe, current_u_nic = beat_synchronous_controller(
+                    C1_phe[start], C1_nic[start], MAP_k, K
+                )
 
     beat_times = [float(idx * dt) for idx in beat_indices]
     
@@ -103,8 +108,13 @@ def index():
 
 @app.route('/simulate', methods=['GET'])
 def simulate():
-    data = run_simulation()
-    return jsonify(data)
+    try:
+        data = run_simulation()
+        return jsonify(data)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000, host='0.0.0.0')
