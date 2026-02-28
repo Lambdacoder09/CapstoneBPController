@@ -9,6 +9,8 @@
         content="LQR-based blood pressure regulation digital twin for anaesthesia control simulation.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
     <style>
         :root {
             --bg-base: #08090d;
@@ -342,15 +344,15 @@
             </div>
             <div class="stat">
                 <div class="stat-value green" id="sSteady">--</div>
-                <div class="stat-label">Steady-State MAP</div>
+                <div class="stat-label">Steady MAP</div>
             </div>
             <div class="stat">
                 <div class="stat-value orange" id="sBP">--</div>
                 <div class="stat-label">SBP / DBP</div>
             </div>
             <div class="stat">
-                <div class="stat-value blue" id="sStatus">Ready</div>
-                <div class="stat-label">Status</div>
+                <div class="stat-value red" id="sPP" style="color: var(--accent-red)">--</div>
+                <div class="stat-label">Pulse Pressure</div>
             </div>
         </div>
 
@@ -413,37 +415,47 @@
 
         let charts = {};
 
-        try {
-            const res = await fetch('/simulate');
-            const d = await res.json();
-            if (!res.ok || d.error) throw new Error(d.error || 'Server error');
+        async function runSim() {
+            const btn = document.getElementById('runBtn');
+            const text = document.getElementById('btnText');
+            const spin = document.getElementById('spinner');
+            const dash = document.getElementById('dash');
+            const statDiv = document.getElementById('stats');
 
-            // Stats
-            document.getElementById('sTarget').textContent = d.target_map + ' mmHg';
-            const lastMAPs = d.map_beats.slice(-10);
-            const steadyMAP = (lastMAPs.reduce((a, b) => a + b, 0) / lastMAPs.length).toFixed(1);
-            document.getElementById('sSteady').textContent = steadyMAP + ' mmHg';
+            btn.disabled = true;
+            text.textContent = 'Computing…';
+            spin.style.display = 'block';
+            dash.classList.remove('visible');
+            statDiv.classList.remove('hidden');
 
-            // SBP/DBP Stats
-            const lastSBP = d.hemo_sbp[d.hemo_sbp.length - 1];
-            const lastDBP = d.hemo_dbp[d.hemo_dbp.length - 1];
-            document.getElementById('sBP').textContent = Math.round(lastSBP) + ' / ' + Math.round(lastDBP);
+            try {
+                const res = await fetch('/simulate');
+                const d = await res.json();
+                if (!res.ok || d.error) throw new Error(d.error || 'Server error');
 
-            document.getElementById('sStatus').textContent = 'Complete ✓';
-            document.getElementById('sStatus').style.color = '';
+                // Stats
+                document.getElementById('sTarget').textContent = d.target_map + ' mmHg';
+                const lastMAPs = d.map_beats.slice(-10);
+                const steadyMAP = (lastMAPs.reduce((a, b) => a + b, 0) / lastMAPs.length).toFixed(1);
+                document.getElementById('sSteady').textContent = steadyMAP + ' mmHg';
 
-            renderAll(d);
-            dash.classList.add('visible');
+                const lastSBP = d.hemo_sbp[d.hemo_sbp.length - 1];
+                const lastDBP = d.hemo_dbp[d.hemo_dbp.length - 1];
+                const lastPP = d.hemo_pp[d.hemo_pp.length - 1];
+                document.getElementById('sBP').textContent = Math.round(lastSBP) + ' / ' + Math.round(lastDBP);
+                document.getElementById('sPP').textContent = Math.round(lastPP) + ' mmHg';
 
-        } catch (e) {
-            console.error(e);
-            document.getElementById('sStatus').textContent = 'Error ✗';
-            document.getElementById('sStatus').style.color = 'var(--accent-red)';
-        } finally {
-            btn.disabled = false;
-            text.textContent = 'Re-Run Simulation';
-            spin.style.display = 'none';
-        }
+                renderAll(d);
+                dash.classList.add('visible');
+
+            } catch (e) {
+                console.error(e);
+                alert("Simulation Error: " + e.message);
+            } finally {
+                btn.disabled = false;
+                text.textContent = 'Re-Run Simulation';
+                spin.style.display = 'none';
+            }
         }
 
         function destroyAll() {
@@ -460,14 +472,28 @@
         function renderAll(d) {
             destroyAll();
 
-            /* 1. Pressure Waveform */
-            const wLabels = d.wave_time.map(v => v.toFixed(2));
+            /* 1. Pressure Waveform (Annotated) */
+            // Find feature points in the last beat shown
+            const waveData = d.wave_pin;
+            const waveT = d.wave_time;
+            const n_pts = waveData.length;
+            const lastBeatStartIdx = Math.floor(n_pts * 0.7); // heuristic to catch last beat
+            let peakVal = 0, peakIdx = 0, troughVal = 500, troughIdx = 0;
+
+            for (let i = lastBeatStartIdx; i < n_pts; i++) {
+                if (waveData[i] > peakVal) { peakVal = waveData[i]; peakIdx = i; }
+                if (waveData[i] < troughVal) { troughVal = waveData[i]; troughIdx = i; }
+            }
+            // Notch is usually ~0.3s after peak
+            const notchIdx = Math.min(peakIdx + Math.floor(0.3 / (waveT[1] - waveT[0])) || 0, n_pts - 1);
+            const notchVal = waveData[notchIdx] + 2; // offset for visibility
+
             charts.wave = new Chart(document.getElementById('waveChart'), {
                 type: 'line',
                 data: {
-                    labels: thinLabels(wLabels, 20),
+                    labels: thinLabels(waveT.map(v => v.toFixed(2)), 20),
                     datasets: [{
-                        label: 'Aortic Pressure (mmHg)',
+                        label: 'Aortic Pressure (Pin)',
                         data: d.wave_pin,
                         borderColor: '#00e676',
                         backgroundColor: 'rgba(0,230,118,0.06)',
@@ -476,95 +502,121 @@
                         fill: true,
                         tension: 0.1
                     }, {
-                        label: 'Capacitor Pressure (mmHg)',
+                        label: 'Capacitor Pressure (P)',
                         data: d.wave_p,
                         borderColor: 'rgba(0,212,255,0.5)',
                         borderWidth: 1.5,
                         borderDash: [4, 4],
                         pointRadius: 0,
-                        fill: false,
-                        tension: 0.1
+                        fill: false
                     }]
                 },
-                options: chartOpts('Time (s)', 'Pressure (mmHg)', true)
+                options: {
+                    ...chartOpts('Time (s)', 'Pressure (mmHg)', true),
+                    plugins: {
+                        ...chartOpts().plugins,
+                        annotation: {
+                            annotations: {
+                                sLine: { type: 'line', yMin: peakVal, yMax: peakVal, borderColor: '#ff4b5c', borderDash: [6, 6], borderWidth: 1, label: { display: true, content: 'Systolic: ' + Math.round(peakVal), position: 'start', backgroundColor: '#ff4b5c', color: '#fff', font: { size: 10 } } },
+                                dLine: { type: 'line', yMin: troughVal, yMax: troughVal, borderColor: '#00d4ff', borderDash: [6, 6], borderWidth: 1, label: { display: true, content: 'Diastolic: ' + Math.round(troughVal), position: 'start', backgroundColor: '#00d4ff', color: '#fff', font: { size: 10 } } },
+                                notchMark: { type: 'label', xValue: peakIdx + (notchIdx - peakIdx) * 0.5, yValue: peakVal + 5, content: '← Dicrotic Notch', color: '#ffa726', font: { weight: 'bold', size: 11 } }
+                            }
+                        }
+                    }
+                }
             });
 
-            /* 2. MAP */
-            const mLabels = d.beat_times.map(v => v.toFixed(1));
+            /* 2. Beat MAP */
             charts.map = new Chart(document.getElementById('mapChart'), {
                 type: 'line',
                 data: {
-                    labels: thinLabels(mLabels, 25),
+                    labels: thinLabels(d.beat_times.map(v => v.toFixed(1)), 25),
                     datasets: [{
                         label: 'Estimated MAP',
                         data: d.map_beats,
                         borderColor: '#00d4ff',
                         backgroundColor: 'rgba(0,212,255,0.08)',
                         borderWidth: 2,
-                        pointRadius: 2.5,
-                        pointBackgroundColor: '#00d4ff',
                         fill: true,
                         tension: 0.25
                     }, {
                         label: 'Target MAP',
                         data: Array(d.beat_times.length).fill(d.target_map),
-                        borderColor: 'rgba(255,255,255,0.5)',
+                        borderColor: 'rgba(255,255,255,0.3)',
                         borderWidth: 2,
                         borderDash: [6, 4],
-                        pointRadius: 0,
-                        fill: false
+                        pointRadius: 0
                     }]
                 },
-                options: chartOpts('Time (s)', 'Pressure (mmHg)', true)
+                options: chartOpts('Time (s)', 'MAP (mmHg)')
             });
 
-            /* 3. Infusion */
-            const tLabels = d.time.map(v => v.toFixed(1));
+            /* 3. Hemodynamics Trend (SBP/DBP) */
+            charts.hemo = new Chart(document.getElementById('hemoChart'), {
+                type: 'line',
+                data: {
+                    labels: thinLabels(d.hemo_times.map(v => v.toFixed(1)), 25),
+                    datasets: [{
+                        label: 'SBP',
+                        data: d.hemo_sbp,
+                        borderColor: '#ff4b5c',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.2
+                    }, {
+                        label: 'DBP',
+                        data: d.hemo_dbp,
+                        borderColor: '#00d4ff',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.2
+                    }]
+                },
+                options: chartOpts('Time (s)', 'Pressure Envelopes')
+            });
+
+            /* 4. Infusion */
             charts.inf = new Chart(document.getElementById('infChart'), {
                 type: 'line',
                 data: {
-                    labels: thinLabels(tLabels, 15),
+                    labels: thinLabels(d.time.map(v => v.toFixed(1)), 15),
                     datasets: [{
                         label: 'Phenylephrine',
                         data: d.u_phe,
                         borderColor: '#ff4b5c',
                         borderWidth: 2,
-                        pointRadius: 0,
                         stepped: true
                     }, {
                         label: 'Nicardipine',
                         data: d.u_nic,
                         borderColor: '#3a7bd5',
                         borderWidth: 2,
-                        pointRadius: 0,
                         stepped: true
                     }]
                 },
-                options: chartOpts('Time (s)', 'Infusion Rate')
+                options: chartOpts('Time (s)', 'Drug Infusion')
             });
 
-            /* 4. Concentration */
+            /* 5. Concentration */
             charts.conc = new Chart(document.getElementById('concChart'), {
                 type: 'line',
                 data: {
-                    labels: thinLabels(tLabels, 15),
+                    labels: thinLabels(d.time.map(v => v.toFixed(1)), 15),
                     datasets: [{
                         label: 'C₁ Phenylephrine',
                         data: d.c1_phe,
                         borderColor: '#ff4b5c',
                         borderWidth: 2,
-                        pointRadius: 0,
-                        tension: 0.1
+                        pointRadius: 0
                     }, {
                         label: 'C₁ Nicardipine',
                         data: d.c1_nic,
                         borderColor: '#3a7bd5',
                         borderWidth: 2,
-                        pointRadius: 0,
-                        tension: 0.1
+                        pointRadius: 0
                     }]
                 },
-                options: chartOpts('Time (s)', 'Concentration')
+                options: chartOpts('Time (s)', 'Tissue Conc')
             });
         }
 
@@ -575,13 +627,14 @@
                 interaction: { mode: 'index', intersect: false },
                 animation: { duration: bigAnimation ? 1800 : 1200, easing: 'easeOutQuart' },
                 scales: {
-                    x: { title: { display: true, text: xLabel }, grid: { display: false } },
-                    y: { title: { display: true, text: yLabel } }
+                    x: { title: { display: !!xLabel, text: xLabel || '' }, grid: { display: false } },
+                    y: { title: { display: !!yLabel, text: yLabel || '' } }
                 },
-                plugins: { legend: { position: 'top', labels: { boxWidth: 14, padding: 16, usePointStyle: true } } }
+                plugins: { legend: { position: 'top', labels: { boxWidth: 12, padding: 12, usePointStyle: true } } }
             };
         }
     </script>
 </body>
 
 </html>
+```
