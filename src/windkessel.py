@@ -6,7 +6,7 @@ from config import *
 def initialize_windkessel(SV, HR, Pv, R0):
     CO = SV * HR # cardiac output
     initial_map = Pv + R0 * CO 
-    return initial_map * 0.5 # start with low value and let system "ramp up"
+    return initial_map * 0.5 # start with low value and let system 'ramp up'
 
 # Pressure, Resistance, Outflow update
 

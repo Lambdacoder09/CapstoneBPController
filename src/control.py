@@ -3,54 +3,39 @@ import cvxpy as cp
 from config import *
 
 # -----------------------------
-# Beat-Synchronous Constrained LQR Controller
+# Beat-Synchronous Constrained MPC Controller (fixed 5-step horizon)
 # -----------------------------
-def beat_synchronous_controller(C1_phe_k, C1_nic_k, MAP_k, A, B, Q=None, R_lqr=None):
+def beat_synchronous_controller(C1_phe_k, C1_nic_k, MAP_k, MAP_error_integral, A, B, Q, R_lqr):
     """
-    Beat-synchronous constrained LQR controller using a QP (CSV).
-    Solves for optimal infusion commands given current state-space matrices,
-    ensuring no negative infusion and proper allocation between drugs.
-
-    Inputs:
-        C1_phe_k, C1_nic_k    effect-site concentrations at beat start
-        MAP_k                 MAP for the completed beat
-        A, B                  discrete-time state-space matrices (from compute_state_space)
-        Q                     state cost matrix (optional, defaults to identity)
-        R_lqr                 control penalty matrix (optional, defaults to identity)
-
-    Returns:
-        u_phe_k, u_nic_k : infusion commands for the NEXT beat
+    Multi-step (5-beat horizon) constrained MPC for two-drug infusion with integral action.
+    Returns the first infusion command.
     """
 
-    x = np.array([
-        C1_phe_k,
-        C1_nic_k,
-        MAP_k
-    ])
+    N = 5  # multi-step horizon so integral term isn't ignored
 
-    x_ref = np.array([
-        0.0,
-        0.0,
-        target_map
-    ])
+    # Current state
+    x0 = np.array([C1_phe_k, C1_nic_k, MAP_k, MAP_error_integral])
+    x_ref = np.array([0.0, 0.0, target_map, 0.0])
 
-    # --- Define QP ---
-    u = cp.Variable(2)  # two drug inputs
+    # Decision variables
+    x = cp.Variable((4, N+1))
+    u = cp.Variable((2, N))
 
-    # Predict next state with linearized dynamics
-    x_next = A @ x + B @ u
+    constraints = [x[:,0] == x0]
+    cost = 0
 
-    # Quadratic cost: minimize deviation from reference + control effort
-    cost = cp.quad_form(x_next - x_ref, Q) + cp.quad_form(u, R_lqr)
-
-    # Constraint: no negative infusion
-    constraints = [u >= 0]
+    for k in range(N):
+        # Dynamics constraint
+        constraints += [x[:,k+1] == A @ x[:,k] + B @ u[:,k]]
+        # No negative infusion
+        constraints += [u[:,k] >= 0]
+        # Quadratic cost
+        cost += cp.quad_form(x[:,k+1] - x_ref, Q) + cp.quad_form(u[:,k], R_lqr)
 
     # Solve QP
     prob = cp.Problem(cp.Minimize(cost), constraints)
     prob.solve(solver=cp.OSQP)
 
-    u_phe_k = u.value[0]
-    u_nic_k = u.value[1]
-
+    # Return only the first control action
+    u_phe_k, u_nic_k = u.value[:,0]
     return u_phe_k, u_nic_k

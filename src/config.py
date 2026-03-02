@@ -1,12 +1,12 @@
 import numpy as np
 
 # Generic Simulation Parameters
-dt = 0.01                   # sim rate
+dt = 0.05                   # sim rate
 fs = int(1/dt)              # sampling rate
-T  = 100                    # total sim time in seconds
+T  = 500                    # total sim time in seconds
 N  = int(T/dt)              # number of discrete time steps
 t  = np.arange(N) * dt      # time vector in seconds
-warmup_time = 20            # seconds
+warmup_time = T * 0.2       # avoid transients
 warmup_steps = int(warmup_time / dt)
 
 # Main cardiovascular parameters
@@ -20,7 +20,7 @@ tau_d = 0.15 * beat_period        # diastolic decay time constant
 Qmean = SV / beat_period          # avg blow flow through cycle - tied to stroke volume
 
 # Windkessel parameters
-R0 = 1200                         # peripheral resistance, mmHg·s/L
+R0 = 1e3                          # peripheral resistance, mmHg·s/L
 C = 1.5e-3                        # arterial compliance, L/mmHg
 Z = 0.05                          # aortal characteristic imperance, mmHg·s/L
 Pv = 5                            # background venous pressure, mmHg
@@ -37,10 +37,10 @@ k12_nic = 0.04                # rate central -> peripheral (1/s)
 k21_nic = 0.02                # rate peripheral -> central (1/s)
 
 # PD Parameters - Phenylephrine
-Emax_Rphe = 0.6 * R0    # Able to increase resistance by 50%
+Emax_Rphe = 0.6 * R0    # Able to increase resistance by 60%
 EC50_Rphe = 1.5         # ug/L
 # PD Parameters - Nicardipine
-Emax_Rnic = -0.6 * R0   # Able to drop resistance by 50%
+Emax_Rnic = -0.6 * R0   # Able to drop resistance by 60%
 EC50_Rnic = 1           # ug/L   
 
 # Control Parameters
@@ -48,9 +48,10 @@ target_map = 95    # target mean arterial pressure mmHg
 Q = np.diag([      # state penalty matrix
     0,
     0,
-    1              # cost minimizer automatically normalizes so this number doesn't matter
+    1,               
+    1            # the 'integral term' should be small
 ])
 R_lqr = np.diag([  # control penalty matrix
-    EC50_Rphe * 0.2,         # saturation is only non-linearity so all that matters R to EC50 ratios
-    EC50_Rnic * 0.2
+    EC50_Rphe * 1, # base infusion penalty on potency
+    EC50_Rnic * 1
 ])
