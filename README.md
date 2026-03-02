@@ -21,37 +21,22 @@ There are a few puzzle pieces to this control system:
 | Input                  | Blood flow waveform                           |
 | Output                 | Blood pressure waveform                       |
 | Live State Estimation  | Signal processing & analysis (blood pressure & flow) |
-| Actuators              | Cardiac drugs                                 |
+| Actuators              | Cardiac drugs (simulated)                     |
 
-The system as a whole has more parts (sensors, database, data relay etc.), but these issues are routine. This project will include a database for storing results, sensors to use as 
-inputs alongside simulated inputs (heart rate, electrocardiogram), and a dashboard. These are largely side-tasks, however.
+The system as a whole has more parts (sensors, database, data relay etc.), these are handled in other repository.
 
-For now the structure of the files looks like this:
 ## Project Structure
 
 | File               | Purpose                                                                                                                 |
 |--------------------|-------------------------------------------------------------------------------------------------------------------------|
 | `config.py`        | Simulation setup, parameters/constants to be tuned, imported in all other files                                         |
 | `pump.py`          | Generates input blood flow                                                                                              |
-| `windkessel.py`    | Calculates BP waveform based on blood flow and a three‑element Windkessel (Za, R, C)                                    |
-| `signal_process.py`| Estimates (Za, R, C) as if unknown with signal processing from windkessel.py                                            |
-| `control.py`       | Controller – takes in processed BP waveform from signal_process.py and controls drug infusion                           |
+| `windkessel.py`    | Calculates BP waveform based on blood flow and a three‑element Windkessel (Z, R, C)                                     |
+| `signal_process.py`| Cleans BP waveform and estimates MAP                                                                                    |
+| `control.py`       | Controller – changes simulated drug infusion every heart beat based on MAP and main compartment drug concentrations               |
 | `pk.py`            | Pharmacokinetic model – calculates drug concentration in plasma over time with a two‑compartment model based on infusion|
 | `pd.py`            | Pharmacodynamic model – calculates the effect of drug concentration levels on Windkessel parameters                     |
-| `main.py`          | Gathers and prints/plots results                                                                                        |                                                          
-
-
-If this first cut succeeds the following would be nice:
-  - Higher element Windkessel (say 5 elements)
-  - Simulated effect of drugs on input blood flow (unintended feedback)
-  - Simulated effects of a large profile of cardiac drugs with mixed effects on both the heart and vascular system
-  - Blood flow (CO) control rather than only vasocative control of SVR
-  - Predifined scenario testing
-  - Reliability and robustness testing
-
-It will likely be wise to test a variety of plausible relationships between variables since actual relationships seem to be as of yet mysterious to the medical and academic community.
-Either way, the main point is to show that standard approaches are not acutely sensitive to the exact nature of the cardiovascular system; i.e. once the variables are pinned down and
-good enough, control will work. Thank you for reading and wish us luck.
+| `main.py`          | Gathers, prints/plots, and sends results to database and dashboard (outside of this repository)                         |                                                       
 
 
   
