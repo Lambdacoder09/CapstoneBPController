@@ -37,10 +37,10 @@ k12_nic = 0.04                # rate central -> peripheral (1/s)
 k21_nic = 0.02                # rate peripheral -> central (1/s)
 
 # PD Parameters - Phenylephrine
-Emax_Rphe = 0.6 * R0    # Able to increase resistance by 60%
+Emax_Rphe = 0.5 * R0    # Able to increase resistance by 60%
 EC50_Rphe = 1.5         # ug/L
 # PD Parameters - Nicardipine
-Emax_Rnic = -0.6 * R0   # Able to drop resistance by 60%
+Emax_Rnic = -0.5 * R0   # Able to drop resistance by 60%
 EC50_Rnic = 1           # ug/L   
 
 # Control Parameters
@@ -52,6 +52,6 @@ Q = np.diag([      # state penalty matrix
     1            # the 'integral term' should be small
 ])
 R_lqr = np.diag([  # control penalty matrix
-    EC50_Rphe * 1, # base infusion penalty on potency
-    EC50_Rnic * 1
+    EC50_Rphe * 2, # base infusion penalty on potency
+    EC50_Rnic * 2
 ])
